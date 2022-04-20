@@ -177,3 +177,60 @@ spec:
       - name: wordpress-persistent-storage
         persistentVolumeClaim:
           claimName: wordpress-efs-pvc
+          
+          ___________________________
+          
+          $ aws elb describe-load-balancers --load-balancer-name affd1a464c0b24ac8b6a1731a03b1462
+{
+    "LoadBalancerDescriptions": [
+        {
+            "LoadBalancerName": "affd1a464c0b24ac8b6a1731a03b1462",
+            "DNSName": "affd1a464c0b24ac8b6a1731a03b1462-1813627936.eu-central-1.elb.amazonaws.com",
+            "CanonicalHostedZoneName": "affd1a464c0b24ac8b6a1731a03b1462-1813627936.eu-central-1.elb.amazonaws.com",
+            "CanonicalHostedZoneNameID": "Z215JYRZR1TBD5",
+            "ListenerDescriptions": [
+                {
+                    "Listener": {
+                        "Protocol": "HTTP",
+                        "LoadBalancerPort": 80,
+                        "InstanceProtocol": "HTTP",
+                        "InstancePort": 80
+                    },
+                    "PolicyNames": []
+                },
+                {
+                    "Listener": {
+                        "Protocol": "HTTPS",
+                        "LoadBalancerPort": 443,
+                        "InstanceProtocol": "HTTP",
+                        "InstancePort": 31019,
+                        "SSLCertificateId": "arn:aws:acm:eu-central-1:801568621821:certificate/d2268e31-bd3c-4376-9e60-24cb7950a3f8"
+                    },
+                    "PolicyNames": [
+                        "AWSConsole-SSLNegotiationPolicy-affd1a464c0b24ac8b6a1731a03b1462-1650483075942"
+                    ]
+                }
+            ],
+            "Policies": {
+                "AppCookieStickinessPolicies": [],
+                "LBCookieStickinessPolicies": [],
+                "OtherPolicies": [
+                    "AWSConsole-SSLNegotiationPolicy-affd1a464c0b24ac8b6a1731a03b1462-1650483075942",
+                    "ELBSecurityPolicy-2016-08"
+                ]
+            },
+            "BackendServerDescriptions": [],
+            "AvailabilityZones": [
+                "eu-central-1b",
+                "eu-central-1c",
+                "eu-central-1a"
+            ],
+            "Subnets": [
+                "subnet-017862d853c2caf6c",
+                "subnet-04e41918efc333904",
+                "subnet-0c9d442766b31c199"
+            ],
+            "VPCId": "vpc-04cfcfcef36803c61",
+            "Instances": [
+                {
+                    "InstanceId": "i-0aec0aec517ae8b40"

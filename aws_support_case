@@ -1,0 +1,179 @@
+
+
+___________________________________
+
+$ kubectl get svc
+NAME              TYPE           CLUSTER-IP       EXTERNAL-IP                                                                  PORT(S)        AGE
+kubernetes        ClusterIP      10.100.0.1       <none>                                                                       443/TCP        20d
+wordpress         LoadBalancer   10.100.227.129   affd1a464c0b24ac8b6a1731a03b1462-1813627936.eu-central-1.elb.amazonaws.com   80:30488/TCP   20d
+wordpress-mysql   ClusterIP      None             <none>                                                                       3306/TCP       20d
+
+$ kubectl get pods
+NAME                               READY   STATUS    RESTARTS   AGE
+external-dns-56d7f9dd95-lnmfm      1/1     Running   0          12d
+wordpress-7bf5c776dd-klrv2         1/1     Running   2          20d
+wordpress-mysql-69d77f48bc-w8s4c   1/1     Running   0          20d
+
+Annotations I am trying which fails:
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: eksbyimraan.co.za
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
+    service.beta.kubernetes.io/aws-load-balancer-ssl-cert: arn:aws:acm:eu-central-1:801568621821:certificate/d2268e31-bd3c-4376-9e60-24cb7950a3f8
+    service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "https"
+  labels:
+    app: wordpress
+spec:
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+  - name: https
+    port: 443
+    targetPort: 8080
+  selector:
+    app: wordpress
+    tier: frontend
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress
+  labels:
+    app: wordpress
+spec:
+  selector:
+    matchLabels:
+      app: wordpress
+      tier: frontend
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: wordpress
+        tier: frontend
+    spec:
+      containers:
+      - image: wordpress:php7.1-apache
+        name: wordpress
+        env:
+        - name: WORDPRESS_DB_HOST
+          value: wordpress-mysql
+        - name: WORDPRESS_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-pass
+              key: password
+        ports:
+        - containerPort: 8080
+          name: wordpress
+        volumeMounts:
+        - name: wordpress-persistent-storage
+          mountPath: /var/www/html
+      volumes:
+      - name: wordpress-persistent-storage
+        persistentVolumeClaim:
+          claimName: wordpress-efs-pvc
+
+-----------
+
+full file before applying changes however the rest if just the controller for efs:
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: eksbyimraan.co.za
+  labels:
+    app: wordpress
+spec:
+  ports:
+  - port: 80
+  selector:
+    app: wordpress
+    tier: frontend
+  type: LoadBalancer
+---
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: efs-sc
+provisioner: efs.csi.aws.com
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: wordpress-efs-pv
+spec:
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: efs-sc
+  csi:
+    driver: efs.csi.aws.com
+    volumeHandle: fs-008b291d2b2ae20ac::fsap-09434dac702112fdb
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wordpress-efs-pvc
+  labels:
+    app: wordpress
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1 
+kind: Deployment
+metadata:
+  name: wordpress
+  labels:
+    app: wordpress
+spec:
+  selector:
+    matchLabels:
+      app: wordpress
+      tier: frontend
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: wordpress
+        tier: frontend
+    spec:
+      containers:
+      - image: wordpress:php7.1-apache
+        name: wordpress
+        env:
+        - name: WORDPRESS_DB_HOST
+          value: wordpress-mysql
+        - name: WORDPRESS_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-pass
+              key: password
+        ports:
+        - containerPort: 80
+          name: wordpress
+        volumeMounts:
+        - name: wordpress-persistent-storage
+          mountPath: /var/www/html
+      volumes:
+      - name: wordpress-persistent-storage
+        persistentVolumeClaim:
+          claimName: wordpress-efs-pvc
